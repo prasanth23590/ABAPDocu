@@ -8,7 +8,7 @@ into plain Markdown, one file per topic.
 | ----------------------- | --------------------------------------------------------------- |
 | Topics                  | 4,963 Markdown files (about 34 MB)                              |
 | Language                | English (`en-US`)                                               |
-| Edition                 | `latest` as published on SAP Help Portal on 2026-10-19          |
+| Edition                 | `latest` from SAP Help Portal; snapshot date in [`LAST_UPDATED`](LAST_UPDATED) |
 | Scope                   | ABAP Cloud / language version *ABAP for Cloud Development*      |
 | Cross references        | ~60,000 links between topics, rewritten to relative `.md` links |
 
@@ -88,9 +88,20 @@ docs/
   whose text contains unbalanced square brackets, such as `[CONVERT KEY OF bdef`, were not rewritten
   and still end in `.html`.
 - In-page `#anchors` are kept as in the source. Some may not match the heading ids GitHub generates.
-- It is a snapshot. The Help Portal is updated continuously. Re-run the export to refresh it.
+- It is a snapshot. The Help Portal is updated continuously; this repo refreshes itself monthly (see below).
 
-## Regenerating the export
+## Monthly automatic update
+
+[`.github/workflows/update-docs.yml`](.github/workflows/update-docs.yml) is a GitHub Actions workflow that runs at 03:17 UTC
+on the 1st of every month (and on demand: **Actions → Update ABAP documentation → Run workflow**). It downloads the current
+documentation, rebuilds `docs/`, and commits the result straight to this branch only if something changed,
+updating [`LAST_UPDATED`](LAST_UPDATED). The history of `docs/` therefore shows what SAP changed each month.
+
+- If the download fails, or fewer than 90% of the previous number of topics come back, the run fails and nothing is committed.
+- pandoc is pinned to 3.1.3, so that unchanged topics produce identical files and the monthly commits stay small.
+- Scheduled workflows run from the repository's default branch. If you change the default branch, keep the workflow file on it.
+
+## Regenerating the export by hand
 
 The two scripts in [`tools/`](tools) rebuild `docs/` from the Help Portal. They need Python 3.9+,
 [`beautifulsoup4`](https://pypi.org/project/beautifulsoup4/) and [`pandoc`](https://pandoc.org/).

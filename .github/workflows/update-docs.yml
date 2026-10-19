@@ -1,0 +1,63 @@
+name: Update ABAP documentation
+
+on:
+  schedule:
+    - cron: "17 3 1 * *"      # 03:17 UTC on the 1st of every month
+  workflow_dispatch:           # manual run from the Actions tab
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-docs
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # The pandoc version is pinned so that unchanged topics convert to identical Markdown
+      # and the monthly commit only contains real documentation changes.
+      - name: Install pandoc and beautifulsoup4
+        run: |
+          curl -fsSL -o /tmp/pandoc.deb \
+            https://github.com/jgm/pandoc/releases/download/3.1.3/pandoc-3.1.3-1-amd64.deb
+          sudo dpkg -i /tmp/pandoc.deb
+          pip install beautifulsoup4==4.12.3
+
+      - name: Download documentation from SAP Help Portal
+        run: python3 tools/fetch.py "$RUNNER_TEMP/cache" --workers 8
+
+      - name: Convert to Markdown
+        run: |
+          old=$(find docs -name '*.md' | wc -l)
+          python3 -I tools/convert.py "$RUNNER_TEMP/cache" "$RUNNER_TEMP/docs-new"
+          new=$(find "$RUNNER_TEMP/docs-new" -name '*.md' | wc -l)
+          echo "topics: before=$old after=$new"
+          # Guard against a broken or partial download wiping the repo.
+          if [ "$new" -lt $(( old * 9 / 10 )) ]; then
+            echo "::error::Topic count dropped from $old to $new; refusing to replace docs/"
+            exit 1
+          fi
+          rm -rf docs
+          mv "$RUNNER_TEMP/docs-new" docs
+
+      - name: Commit changes
+        run: |
+          if git diff --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
+            echo "No documentation changes."
+            exit 0
+          fi
+          date -u +%Y-%m-%d > LAST_UPDATED
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Monthly documentation update ($(cat LAST_UPDATED))"
+          git push
