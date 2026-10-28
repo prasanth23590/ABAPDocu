@@ -118,3 +118,8 @@ python3 -I tools/convert.py /path/to/cache docs
 `fetch.py` uses the JSON endpoints behind the Help Portal web app (`deliverableMetadata` and `pagecontent`), because
 the portal itself is a JavaScript app that returns no content to a plain HTTP request. It is polite (8 parallel requests, retries
 with backoff) but is not an official API, so it may break if SAP changes the portal.
+
+## Also in this repository: Brisbane infrastructure maintenance datasets
+
+[`datasets/`](datasets/) holds two separate, unrelated datasets for Brisbane City Council infrastructure
+maintenance (trees and roads), built from Council open data. See [`datasets/README.md`](datasets/README.md).
